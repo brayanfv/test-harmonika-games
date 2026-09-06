@@ -24,6 +24,11 @@ class User extends Authenticatable
         return $this->hasMany(Contact::class);
     }
 
+    public function financialTransactions(): HasMany
+    {
+        return $this->hasMany(FinancialTransaction::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *
