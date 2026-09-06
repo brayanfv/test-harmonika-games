@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContactController;
+use App\Http\Controllers\FinancialTransactionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -20,4 +21,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/contacts/{id}', [ContactController::class, 'show']);
     Route::put('/contacts/{id}', [ContactController::class, 'update']);
     Route::delete('/contacts/{id}', [ContactController::class, 'destroy']);
+
+    Route::get('/transactions', [FinancialTransactionController::class, 'index']);
+    Route::post('/transactions', [FinancialTransactionController::class, 'store']);
+    Route::get('/transactions/{id}', [FinancialTransactionController::class, 'show']);
+    Route::put('/transactions/{id}', [FinancialTransactionController::class, 'update']);
+    Route::delete('/transactions/{id}', [FinancialTransactionController::class, 'destroy']);
+    Route::post('/transactions/{id}/pay', [FinancialTransactionController::class, 'pay']);
 });
