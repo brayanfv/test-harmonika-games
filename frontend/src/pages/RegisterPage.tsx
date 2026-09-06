@@ -26,6 +26,7 @@ export function RegisterPage() {
         password,
         password_confirmation: passwordConfirmation,
       });
+      navigate('/', { replace: true });
     } catch {
       setError('Não foi possível criar a conta.');
     } finally {

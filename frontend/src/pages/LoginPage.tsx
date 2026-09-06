@@ -1,8 +1,10 @@
 import { type FormEvent, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 
 export function LoginPage() {
   const { login } = useAuth();
+  const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,6 +19,7 @@ export function LoginPage() {
 
     try {
       await login(email, password);
+      navigate('/', { replace: true });
     } catch {
       setError('E-mail ou senha inválidos.');
     } finally {
@@ -58,6 +61,10 @@ export function LoginPage() {
           {submitting ? 'Entrando...' : 'Entrar'}
         </button>
       </form>
+
+      <button type="button" className="auth-link" onClick={() => navigate('/register')}>
+        Criar conta
+      </button>
     </main>
   );
 }
