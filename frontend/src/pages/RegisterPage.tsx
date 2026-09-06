@@ -1,11 +1,8 @@
 import { type FormEvent, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext';
 
-type RegisterPageProps = {
-  onShowLogin: () => void;
-};
-
-export function RegisterPage({ onShowLogin }: RegisterPageProps) {
+export function RegisterPage() {
   const { register } = useAuth();
 
   const [name, setName] = useState('');
@@ -14,6 +11,7 @@ export function RegisterPage({ onShowLogin }: RegisterPageProps) {
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const navigate = useNavigate();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -92,7 +90,7 @@ export function RegisterPage({ onShowLogin }: RegisterPageProps) {
         </button>
       </form>
 
-      <button type="button" onClick={onShowLogin}>
+      <button type="button" onClick={() => navigate('/login')}>
         Já tenho uma conta
       </button>
     </main>
