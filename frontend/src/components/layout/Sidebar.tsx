@@ -30,11 +30,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <span className="sidebar__icon" aria-hidden="true">▦</span>
           Dashboard
         </NavLink>
-        <span className="sidebar__link sidebar__link--disabled" aria-disabled="true">
+        <NavLink to="/contacts" className="sidebar__link" onClick={onClose}>
           <span className="sidebar__icon" aria-hidden="true">◉</span>
           Contatos
-          <small>Em breve</small>
-        </span>
+        </NavLink>
         <span className="sidebar__link sidebar__link--disabled" aria-disabled="true">
           <span className="sidebar__icon" aria-hidden="true">◒</span>
           Financeiro
