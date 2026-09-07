@@ -38,6 +38,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <span className="sidebar__icon" aria-hidden="true">◒</span>
           Lançamentos
         </NavLink>
+        <NavLink to="/period-overview" className="sidebar__link" onClick={onClose}>
+          <span className="sidebar__icon" aria-hidden="true">◫</span>
+          Visão do período
+        </NavLink>
       </nav>
 
       <button type="button" className="sidebar__logout" onClick={handleLogout}>

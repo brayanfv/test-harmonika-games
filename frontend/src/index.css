@@ -779,6 +779,71 @@ form + .auth-link:hover { color: var(--highlight); }
   opacity: 0.65;
 }
 
+.period-overview {
+  display: grid;
+  gap: 28px;
+}
+
+.period-filter-card {
+  padding: 28px;
+  display: grid;
+  gap: 22px;
+  background: rgba(25, 24, 22, 0.78);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+}
+
+.period-filter-card h2, .period-filter-card p { margin: 0; }
+.period-filter-card h2 { color: var(--text); font-size: 1.1rem; }
+.period-filter-card > div > p { margin-top: 6px; color: var(--text-muted); font-size: 0.82rem; }
+
+.period-filter {
+  margin: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 16px;
+}
+
+.period-filter button {
+  min-width: 155px;
+}
+
+.period-overview__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.metric-card--paid { border-top: 3px solid #91d397; }
+.metric-card--overdue { border-top: 3px solid #ff8d62; }
+
+.period-overview__state {
+  min-height: 160px;
+  padding: 30px;
+  display: grid;
+  place-content: center;
+  gap: 14px;
+  color: var(--text-muted);
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+}
+
+.period-overview__state p { margin: 0; }
+
+.period-overview__state button {
+  padding: 10px 16px;
+  color: #25150c;
+  background: var(--highlight);
+  border: 0;
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+.period-overview__state--error { color: #ff9a72; }
+
 @media (max-width: 760px) {
   .sidebar {
     position: fixed;
@@ -841,6 +906,10 @@ form + .auth-link:hover { color: var(--highlight); }
   .transactions-list-card__header, .transactions-list__item { padding: 22px 20px; }
   .transactions-list__item { grid-template-columns: 1fr; gap: 14px; }
   .transactions-list__details, .transactions-list__actions { justify-content: flex-start; }
+  .period-filter-card { padding: 24px 20px; }
+  .period-filter { grid-template-columns: 1fr; }
+  .period-filter button { width: 100%; }
+  .period-overview__metrics { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 420px) {
