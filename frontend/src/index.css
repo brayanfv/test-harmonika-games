@@ -214,38 +214,176 @@ button:focus-visible, a:focus-visible, input:focus-visible {
   line-height: 1.65;
 }
 
-.dashboard__placeholder {
-  min-height: 260px;
-  padding: 36px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  color: var(--text);
-  background: linear-gradient(135deg, rgba(39, 35, 31, 0.92), rgba(24, 23, 21, 0.92));
+.dashboard h2 { font-size: 1.15rem; letter-spacing: -0.02em; }
+
+.dashboard__state {
+  min-height: 180px;
+  padding: 32px;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  text-align: center;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: 18px;
 }
 
-.dashboard__placeholder-icon {
-  width: 42px;
-  height: 42px;
-  margin-bottom: 20px;
+.dashboard__state--error {
+  gap: 16px;
+  color: var(--text);
+}
+
+.dashboard__state p { margin: 0; }
+
+.dashboard__state button {
+  padding: 10px 16px;
+  color: #25150c;
+  background: var(--highlight);
+  border: 0;
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+.dashboard__metrics {
   display: grid;
-  place-items: center;
-  color: #24180c;
-  background: linear-gradient(135deg, var(--highlight), var(--accent));
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(242, 99, 34, 0.2);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
 }
 
-.dashboard h2 { font-size: 1.15rem; letter-spacing: -0.02em; }
+.metric-card {
+  min-height: 146px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(39, 35, 31, 0.92), rgba(24, 23, 21, 0.92));
+  border: 1px solid var(--border);
+  border-radius: 15px;
+}
 
-.dashboard__placeholder p {
-  max-width: 430px;
-  margin-top: 8px;
+.metric-card > span, .metric-card small {
   color: var(--text-muted);
-  line-height: 1.6;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
+
+.metric-card strong {
+  margin-top: 10px;
+  color: var(--text);
+  font-size: clamp(1.45rem, 2.6vw, 2rem);
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+}
+
+.metric-card small {
+  margin-top: 8px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  text-transform: none;
+}
+
+.metric-card--receivable { border-top: 3px solid var(--highlight); }
+.metric-card--payable { border-top: 3px solid var(--accent); }
+.metric-card--pending { border-top: 3px solid #a783ff; }
+
+.upcoming-transactions {
+  overflow: hidden;
+  background: rgba(25, 24, 22, 0.78);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+}
+
+.upcoming-transactions__header {
+  padding: 28px 30px 24px;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.upcoming-transactions__header .dashboard__eyebrow { margin-bottom: 7px; }
+
+.upcoming-transactions__count {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.upcoming-transactions__empty {
+  margin: 0;
+  padding: 38px 30px;
+  color: var(--text-muted);
+}
+
+.transaction-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.transaction-list__item {
+  padding: 20px 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.transaction-list__item:last-child { border-bottom: 0; }
+
+.transaction-list__main, .transaction-list__details {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.transaction-list__main { min-width: 0; }
+
+.transaction-list__main strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transaction-list__main small, .transaction-list__details > span:first-child {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.transaction-list__type, .transaction-status {
+  flex-shrink: 0;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.transaction-list__type--receivable {
+  color: var(--highlight);
+  background: rgba(255, 193, 77, 0.1);
+}
+
+.transaction-list__type--payable {
+  color: #ff8d62;
+  background: rgba(242, 99, 34, 0.12);
+}
+
+.transaction-list__details { flex-shrink: 0; }
+
+.transaction-list__details > strong {
+  min-width: 104px;
+  color: var(--text);
+  font-size: 0.9rem;
+  text-align: right;
+}
+
+.transaction-status--pending { color: var(--highlight); background: rgba(255, 193, 77, 0.1); }
+.transaction-status--paid { color: #91d397; background: rgba(145, 211, 151, 0.1); }
+.transaction-status--overdue { color: #ff8d62; background: rgba(242, 99, 34, 0.12); }
 
 main:not(.app-shell__main) {
   width: min(100% - 32px, 440px);
@@ -348,7 +486,11 @@ form + .auth-link:hover { color: var(--highlight); }
   .app-header__user-name { display: none; }
   .app-shell__main { padding: 44px 20px; }
   .dashboard { gap: 30px; }
-  .dashboard__placeholder { min-height: 220px; padding: 26px; }
+  .dashboard__metrics { grid-template-columns: 1fr; }
+  .upcoming-transactions__header, .transaction-list__item { padding: 22px 20px; }
+  .transaction-list__item { align-items: flex-start; flex-direction: column; gap: 14px; }
+  .transaction-list__main, .transaction-list__details { flex-wrap: wrap; }
+  .transaction-list__details > strong { text-align: left; }
 }
 
 @media (max-width: 420px) {
