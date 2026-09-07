@@ -24,6 +24,7 @@ services:
       CACHE_STORE: redis
       QUEUE_CONNECTION: redis
       REDIS_HOST: redis
+      REDIS_QUEUE_RETRY_AFTER: 1200
       MAIL_MAILER: smtp
       MAIL_HOST: mailpit
       MAIL_PORT: 1025
@@ -33,7 +34,7 @@ services:
       context: ./backend
     container_name: harmonika_queue
     working_dir: /var/www
-    command: php artisan queue:work redis --queue=reminders --sleep=3 --max-time=3600
+    command: php artisan queue:work redis --queue=reminders,period-closings --sleep=3 --timeout=900 --max-time=3600
     restart: unless-stopped
     volumes:
       - ./backend:/var/www
@@ -53,6 +54,7 @@ services:
       CACHE_STORE: redis
       QUEUE_CONNECTION: redis
       REDIS_HOST: redis
+      REDIS_QUEUE_RETRY_AFTER: 1200
       MAIL_MAILER: smtp
       MAIL_HOST: mailpit
       MAIL_PORT: 1025
@@ -82,6 +84,7 @@ services:
       CACHE_STORE: redis
       QUEUE_CONNECTION: redis
       REDIS_HOST: redis
+      REDIS_QUEUE_RETRY_AFTER: 1200
       MAIL_MAILER: smtp
       MAIL_HOST: mailpit
       MAIL_PORT: 1025

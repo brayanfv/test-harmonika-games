@@ -1,5 +1,7 @@
 import { type FormEvent, useEffect, useMemo, useState } from 'react';
+import { getPeriodClosing, requestPeriodClosing } from '../api/periodClosings';
 import { getTransactions } from '../api/transactions';
+import type { PeriodClosing } from '../types/periodClosing';
 import type { Transaction } from '../types/transaction';
 
 type Period = {
@@ -11,6 +13,13 @@ const currencyFormatter = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
   currency: 'BRL',
 });
+
+const closingStatusLabels = {
+  pending: 'Aguardando processamento',
+  processing: 'Gerando arquivo',
+  sent: 'Enviado por e-mail',
+  failed: 'Falha no processamento',
+};
 
 function formatDateInput(date: Date) {
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -77,6 +86,21 @@ function getTotals(transactions: Transaction[], period: Period) {
   );
 }
 
+function formatPeriodDate(date: string) {
+  return new Date(`${date}T00:00:00`).toLocaleDateString('pt-BR');
+}
+
+function formatDateTime(date: string) {
+  return new Date(date).toLocaleString('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
+}
+
+function isClosingInProgress(status: PeriodClosing['status'] | undefined) {
+  return status === 'pending' || status === 'processing';
+}
+
 export function PeriodOverviewPage() {
   const initialPeriod = getCurrentMonthPeriod();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -86,6 +110,12 @@ export function PeriodOverviewPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [validationError, setValidationError] = useState('');
+  const [periodClosing, setPeriodClosing] = useState<PeriodClosing | null>(null);
+  const [closingLoading, setClosingLoading] = useState(false);
+  const [closingFeedback, setClosingFeedback] = useState('');
+  const [closingError, setClosingError] = useState('');
+  const currentClosingId = periodClosing?.id;
+  const currentClosingStatus = periodClosing?.status;
 
   async function loadTransactions() {
     setLoading(true);
@@ -105,6 +135,25 @@ export function PeriodOverviewPage() {
     void loadTransactions();
   }, []);
 
+  useEffect(() => {
+    if (!currentClosingId || !isClosingInProgress(currentClosingStatus)) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      void getPeriodClosing(currentClosingId)
+        .then((closing) => {
+          setPeriodClosing(closing);
+          setClosingError('');
+        })
+        .catch(() => {
+          setClosingError('Não foi possível atualizar o status do fechamento.');
+        });
+    }, 3000);
+
+    return () => window.clearInterval(timer);
+  }, [currentClosingId, currentClosingStatus]);
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -115,7 +164,30 @@ export function PeriodOverviewPage() {
 
     setValidationError('');
     setAppliedPeriod({ startDate, endDate });
+    setPeriodClosing(null);
+    setClosingFeedback('');
+    setClosingError('');
     void loadTransactions();
+  }
+
+  async function handlePeriodClosing() {
+    setClosingLoading(true);
+    setClosingFeedback('');
+    setClosingError('');
+
+    try {
+      const response = await requestPeriodClosing({
+        start_date: appliedPeriod.startDate,
+        end_date: appliedPeriod.endDate,
+      });
+
+      setPeriodClosing(response.period_closing);
+      setClosingFeedback(response.message);
+    } catch {
+      setClosingError('Não foi possível solicitar o fechamento. Tente novamente.');
+    } finally {
+      setClosingLoading(false);
+    }
   }
 
   const hasTransactionsInPeriod = useMemo(
@@ -129,6 +201,8 @@ export function PeriodOverviewPage() {
     () => getTotals(transactions, appliedPeriod),
     [appliedPeriod, transactions],
   );
+  const closingInProgress = isClosingInProgress(currentClosingStatus);
+  const closingWasSent = periodClosing?.status === 'sent';
 
   return (
     <section className="period-overview" aria-labelledby="period-overview-title">
@@ -210,6 +284,54 @@ export function PeriodOverviewPage() {
           )}
         </>
       )}
+
+      <section className="period-closing-card" aria-labelledby="period-closing-title">
+        <div className="period-closing-card__content">
+          <span className="dashboard__eyebrow">Para o contador</span>
+          <h2 id="period-closing-title">Fechamento do período</h2>
+          <p>
+            Solicite o CSV de {formatPeriodDate(appliedPeriod.startDate)} a{' '}
+            {formatPeriodDate(appliedPeriod.endDate)}. O arquivo será enviado por e-mail.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          className="period-closing-card__button"
+          onClick={() => void handlePeriodClosing()}
+          disabled={closingLoading || closingInProgress || closingWasSent}
+        >
+          {closingLoading
+            ? 'Solicitando...'
+            : periodClosing?.status === 'failed'
+              ? 'Tentar novamente'
+              : closingWasSent
+                ? 'Fechamento enviado'
+                : 'Fechar período'}
+        </button>
+
+        {periodClosing && (
+          <div className="period-closing-status" aria-live="polite">
+            <span className={`period-closing-status__badge period-closing-status__badge--${periodClosing.status}`}>
+              {closingStatusLabels[periodClosing.status]}
+            </span>
+            <p>
+              {periodClosing.status === 'sent' && periodClosing.sent_at
+                ? `Enviado em ${formatDateTime(periodClosing.sent_at)}.`
+                : periodClosing.status === 'failed'
+                  ? 'O envio falhou. Tente solicitar novamente.'
+                  : 'Você pode continuar usando o sistema enquanto o arquivo é preparado.'}
+            </p>
+          </div>
+        )}
+
+        {closingFeedback && !closingError && (
+          <p className="contacts-feedback" role="status">{closingFeedback}</p>
+        )}
+        {closingError && (
+          <p className="contacts-feedback contacts-feedback--error" role="alert">{closingError}</p>
+        )}
+      </section>
     </section>
   );
 }
