@@ -844,6 +844,95 @@ form + .auth-link:hover { color: var(--highlight); }
 
 .period-overview__state--error { color: #ff9a72; }
 
+.period-closing-card {
+  padding: 28px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 22px;
+  background: linear-gradient(135deg, rgba(242, 99, 34, 0.12), rgba(25, 24, 22, 0.88));
+  border: 1px solid rgba(242, 99, 34, 0.32);
+  border-radius: 18px;
+}
+
+.period-closing-card__content h2, .period-closing-card__content p {
+  margin: 0;
+}
+
+.period-closing-card__content h2 {
+  color: var(--text);
+  font-size: 1.2rem;
+}
+
+.period-closing-card__content p {
+  max-width: 640px;
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.period-closing-card__button {
+  min-width: 170px;
+  min-height: 46px;
+  padding: 0 18px;
+  color: #25150c;
+  background: var(--accent);
+  border: 0;
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+.period-closing-card__button:hover:not(:disabled) { background: var(--highlight); }
+
+.period-closing-card__button:disabled {
+  cursor: default;
+  opacity: 0.65;
+}
+
+.period-closing-status {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.period-closing-status p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.period-closing-status__badge {
+  flex-shrink: 0;
+  padding: 6px 9px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.period-closing-status__badge--pending {
+  color: var(--highlight);
+  background: rgba(255, 193, 77, 0.1);
+}
+
+.period-closing-status__badge--processing {
+  color: #c4adff;
+  background: rgba(167, 131, 255, 0.12);
+}
+
+.period-closing-status__badge--sent {
+  color: #91d397;
+  background: rgba(145, 211, 151, 0.1);
+}
+
+.period-closing-status__badge--failed {
+  color: #ff9a72;
+  background: rgba(242, 99, 34, 0.12);
+}
+
+.period-closing-card > .contacts-feedback { grid-column: 1 / -1; }
+
 @media (max-width: 760px) {
   .sidebar {
     position: fixed;
@@ -910,6 +999,10 @@ form + .auth-link:hover { color: var(--highlight); }
   .period-filter { grid-template-columns: 1fr; }
   .period-filter button { width: 100%; }
   .period-overview__metrics { grid-template-columns: 1fr; }
+  .period-closing-card { grid-template-columns: 1fr; padding: 24px 20px; }
+  .period-closing-card__button { width: 100%; }
+  .period-closing-status { grid-column: auto; align-items: flex-start; flex-direction: column; }
+  .period-closing-card > .contacts-feedback { grid-column: auto; }
 }
 
 @media (max-width: 420px) {

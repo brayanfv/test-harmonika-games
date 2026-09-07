@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\FinancialTransactionController;
+use App\Http\Controllers\PeriodClosingController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -28,4 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/transactions/{id}', [FinancialTransactionController::class, 'update']);
     Route::delete('/transactions/{id}', [FinancialTransactionController::class, 'destroy']);
     Route::post('/transactions/{id}/pay', [FinancialTransactionController::class, 'pay']);
+
+    Route::post('/period-closings', [PeriodClosingController::class, 'store']);
+    Route::get('/period-closings/{id}', [PeriodClosingController::class, 'show']);
 });
