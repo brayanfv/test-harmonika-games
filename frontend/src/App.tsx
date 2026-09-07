@@ -5,6 +5,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ContactsPage } from './pages/ContactsPage';
+import { PeriodOverviewPage } from './pages/PeriodOverviewPage';
 import { TransactionsPage } from './pages/TransactionsPage';
 
 function App() {
@@ -18,6 +19,7 @@ function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/contacts" element={<ContactsPage />} />
           <Route path="/transactions" element={<TransactionsPage />} />
+          <Route path="/period-overview" element={<PeriodOverviewPage />} />
         </Route>
       </Route>
 
