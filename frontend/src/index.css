@@ -437,6 +437,188 @@ form + .auth-link {
 
 form + .auth-link:hover { color: var(--highlight); }
 
+.contacts-page {
+  display: grid;
+  gap: 28px;
+}
+
+.page-intro h1, .page-intro p { margin: 0; }
+
+.page-intro h1 {
+  color: var(--text);
+  font-size: clamp(2rem, 4vw, 3.25rem);
+  line-height: 1.05;
+  letter-spacing: -0.055em;
+}
+
+.page-intro p {
+  max-width: 550px;
+  margin-top: 16px;
+  color: var(--text-muted);
+  line-height: 1.65;
+}
+
+.contacts-feedback {
+  width: fit-content;
+  margin: 0;
+  padding: 10px 14px;
+  color: #91d397;
+  background: rgba(145, 211, 151, 0.1);
+  border: 1px solid rgba(145, 211, 151, 0.25);
+  border-radius: 8px;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.contacts-feedback--error {
+  color: #ff9a72;
+  background: rgba(242, 99, 34, 0.12);
+  border-color: rgba(242, 99, 34, 0.34);
+}
+
+.contacts-page__content {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.28fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.contact-form-card, .contacts-list-card {
+  overflow: hidden;
+  background: rgba(25, 24, 22, 0.78);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+}
+
+.contact-form-card { padding: 28px; }
+
+.contact-form-card__header, .contacts-list-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.contact-form-card h2, .contacts-list-card h2 { margin: 0; color: var(--text); }
+
+.button-link {
+  padding: 6px 0;
+  color: var(--highlight);
+  background: transparent;
+  border: 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.button-link--danger { color: #ff8d62; }
+
+.contact-form { margin-top: 24px; }
+
+.contact-form button[type="submit"] { width: 100%; }
+
+.contacts-list-card__header {
+  padding: 27px 30px;
+  border-bottom: 1px solid var(--border);
+}
+
+.contacts-list-card__header > span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.contacts-list-card__state, .contacts-list-card__empty {
+  min-height: 180px;
+  margin: 0;
+  padding: 30px;
+  display: grid;
+  place-content: center;
+  gap: 14px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.contacts-list-card__state p { margin: 0; }
+
+.contacts-list-card__state button {
+  padding: 10px 16px;
+  color: #25150c;
+  background: var(--highlight);
+  border: 0;
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+.contacts-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.contacts-list__item {
+  padding: 20px 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.contacts-list__item:last-child { border-bottom: 0; }
+
+.contacts-list__identity {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.contacts-list__identity > span {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  color: #21160c;
+  background: linear-gradient(135deg, var(--highlight), var(--accent));
+  border-radius: 11px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.contacts-list__identity div { min-width: 0; }
+
+.contacts-list__identity strong, .contacts-list__identity small { display: block; }
+
+.contacts-list__identity strong {
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.contacts-list__identity small {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 0.77rem;
+}
+
+.contacts-list__actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 14px;
+}
+
+.contacts-list__actions > button:not(.button-link) {
+  padding: 6px 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.contacts-list__actions > button:hover { color: var(--text); }
+
 @media (max-width: 760px) {
   .sidebar {
     position: fixed;
@@ -491,6 +673,9 @@ form + .auth-link:hover { color: var(--highlight); }
   .transaction-list__item { align-items: flex-start; flex-direction: column; gap: 14px; }
   .transaction-list__main, .transaction-list__details { flex-wrap: wrap; }
   .transaction-list__details > strong { text-align: left; }
+  .contacts-page__content { grid-template-columns: 1fr; }
+  .contact-form-card { padding: 24px 20px; }
+  .contacts-list-card__header, .contacts-list__item { padding: 22px 20px; }
 }
 
 @media (max-width: 420px) {
