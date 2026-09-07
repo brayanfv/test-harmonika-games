@@ -21,6 +21,66 @@ services:
       DB_DATABASE: harmonika
       DB_USERNAME: harmonika
       DB_PASSWORD: harmonika
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+      REDIS_HOST: redis
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+
+  queue:
+    build:
+      context: ./backend
+    container_name: harmonika_queue
+    working_dir: /var/www
+    command: php artisan queue:work redis --queue=reminders --sleep=3 --max-time=3600
+    restart: unless-stopped
+    volumes:
+      - ./backend:/var/www
+      - backend_vendor:/var/www/vendor
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: harmonika
+      DB_USERNAME: harmonika
+      DB_PASSWORD: harmonika
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
+      REDIS_HOST: redis
+      MAIL_MAILER: smtp
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+
+  scheduler:
+    build:
+      context: ./backend
+    container_name: harmonika_scheduler
+    working_dir: /var/www
+    command: php artisan schedule:work
+    restart: unless-stopped
+    volumes:
+      - ./backend:/var/www
+      - backend_vendor:/var/www/vendor
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: harmonika
+      DB_USERNAME: harmonika
+      DB_PASSWORD: harmonika
+      CACHE_STORE: redis
+      QUEUE_CONNECTION: redis
       REDIS_HOST: redis
       MAIL_MAILER: smtp
       MAIL_HOST: mailpit
