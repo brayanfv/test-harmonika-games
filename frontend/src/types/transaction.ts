@@ -26,3 +26,11 @@ export type Transaction = {
   updated_at: string;
   contact: TransactionContact | null;
 };
+
+export type TransactionData = {
+  contact_id: number | null;
+  type: TransactionType;
+  description: string;
+  amount: number;
+  due_date: string;
+};
