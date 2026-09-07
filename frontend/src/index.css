@@ -730,6 +730,11 @@ form + .auth-link:hover { color: var(--highlight); }
   font-size: 0.77rem;
 }
 
+.transactions-list__paid-at {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+}
+
 .transactions-list__details {
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -756,6 +761,23 @@ form + .auth-link:hover { color: var(--highlight); }
 }
 
 .transactions-list__actions > button:hover { color: var(--text); }
+
+.transactions-list__actions .transaction-settlement-button {
+  padding: 7px 10px;
+  color: #25150c;
+  background: var(--highlight);
+  border: 0;
+  border-radius: 7px;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.transactions-list__actions .transaction-settlement-button:hover { background: var(--accent); }
+
+.transactions-list__actions .transaction-settlement-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
 
 @media (max-width: 760px) {
   .sidebar {

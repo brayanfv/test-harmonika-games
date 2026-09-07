@@ -22,3 +22,9 @@ export async function updateTransaction(id: number, data: TransactionData): Prom
 export async function deleteTransaction(id: number): Promise<void> {
   await api.delete(`/api/transactions/${id}`);
 }
+
+export async function payTransaction(id: number): Promise<Transaction> {
+  const response = await api.post<Transaction>(`/api/transactions/${id}/pay`);
+
+  return response.data;
+}

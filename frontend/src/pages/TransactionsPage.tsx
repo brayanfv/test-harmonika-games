@@ -4,6 +4,7 @@ import {
   createTransaction,
   deleteTransaction,
   getTransactions,
+  payTransaction,
   updateTransaction,
 } from '../api/transactions';
 import type { Contact } from '../types/contact';
@@ -40,6 +41,11 @@ const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
   year: 'numeric',
 });
 
+const dateTimeFormatter = new Intl.DateTimeFormat('pt-BR', {
+  dateStyle: 'short',
+  timeStyle: 'short',
+});
+
 function getTodayDate() {
   const today = new Date();
   const month = String(today.getMonth() + 1).padStart(2, '0');
@@ -72,6 +78,10 @@ function formatDueDate(dueDate: string) {
   return dateFormatter.format(new Date(year, month - 1, day));
 }
 
+function formatPaidAt(paidAt: string) {
+  return dateTimeFormatter.format(new Date(paidAt));
+}
+
 export function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -79,6 +89,7 @@ export function TransactionsPage() {
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [settlingId, setSettlingId] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState('');
   const today = getTodayDate();
@@ -111,6 +122,10 @@ export function TransactionsPage() {
   }
 
   function startEditing(transaction: Transaction) {
+    if (transaction.status === 'paid') {
+      return;
+    }
+
     setEditingTransaction(transaction);
     setFormData(getFormData(transaction));
     setFeedback('');
@@ -154,6 +169,10 @@ export function TransactionsPage() {
   }
 
   async function handleDelete(transaction: Transaction) {
+    if (transaction.status === 'paid') {
+      return;
+    }
+
     if (!window.confirm(`Excluir o lançamento ${transaction.description}?`)) {
       return;
     }
@@ -174,6 +193,34 @@ export function TransactionsPage() {
       setFeedback('Lançamento excluído com sucesso.');
     } catch {
       setError('Não foi possível excluir o lançamento. Tente novamente.');
+    }
+  }
+
+  async function handleSettlement(transaction: Transaction) {
+    if (transaction.status === 'paid') {
+      return;
+    }
+
+    if (!window.confirm(`Liquidar o lançamento ${transaction.description}?`)) {
+      return;
+    }
+
+    setSettlingId(transaction.id);
+    setError('');
+    setFeedback('');
+
+    try {
+      const paidTransaction = await payTransaction(transaction.id);
+      setTransactions((currentTransactions) =>
+        currentTransactions.map((currentTransaction) =>
+          currentTransaction.id === paidTransaction.id ? paidTransaction : currentTransaction,
+        ),
+      );
+      setFeedback('Lançamento liquidado com sucesso.');
+    } catch {
+      setError('Não foi possível liquidar o lançamento. Tente novamente.');
+    } finally {
+      setSettlingId(null);
     }
   }
 
@@ -310,13 +357,28 @@ export function TransactionsPage() {
                       <span className={`transaction-status transaction-status--${status}`}>
                         {statusLabel}
                       </span>
+                      {transaction.paid_at && (
+                        <small className="transactions-list__paid-at">
+                          Liquidado em {formatPaidAt(transaction.paid_at)}
+                        </small>
+                      )}
                     </div>
-                    <div className="transactions-list__actions">
-                      <button type="button" onClick={() => startEditing(transaction)}>Editar</button>
-                      <button type="button" className="button-link button-link--danger" onClick={() => void handleDelete(transaction)}>
-                        Excluir
-                      </button>
-                    </div>
+                    {transaction.status === 'pending' && (
+                      <div className="transactions-list__actions">
+                        <button
+                          type="button"
+                          className="transaction-settlement-button"
+                          disabled={settlingId === transaction.id}
+                          onClick={() => void handleSettlement(transaction)}
+                        >
+                          {settlingId === transaction.id ? 'Liquidando...' : 'Liquidar'}
+                        </button>
+                        <button type="button" onClick={() => startEditing(transaction)}>Editar</button>
+                        <button type="button" className="button-link button-link--danger" onClick={() => void handleDelete(transaction)}>
+                          Excluir
+                        </button>
+                      </div>
+                    )}
                   </li>
                 );
               })}
