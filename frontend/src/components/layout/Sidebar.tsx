@@ -34,11 +34,10 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           <span className="sidebar__icon" aria-hidden="true">◉</span>
           Contatos
         </NavLink>
-        <span className="sidebar__link sidebar__link--disabled" aria-disabled="true">
+        <NavLink to="/transactions" className="sidebar__link" onClick={onClose}>
           <span className="sidebar__icon" aria-hidden="true">◒</span>
-          Financeiro
-          <small>Em breve</small>
-        </span>
+          Lançamentos
+        </NavLink>
       </nav>
 
       <button type="button" className="sidebar__logout" onClick={handleLogout}>

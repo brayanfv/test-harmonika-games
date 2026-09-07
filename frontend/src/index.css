@@ -25,7 +25,7 @@ body {
   background: var(--background);
 }
 
-button, input { font: inherit; }
+button, input, select { font: inherit; }
 button { cursor: pointer; }
 
 button:focus-visible, a:focus-visible, input:focus-visible {
@@ -403,7 +403,7 @@ form { margin-top: 30px; display: grid; gap: 18px; }
 form div { display: grid; gap: 8px; }
 label { color: var(--text-muted); font-size: 0.85rem; font-weight: 700; }
 
-input {
+input, select {
   width: 100%;
   min-height: 46px;
   padding: 0 13px;
@@ -413,7 +413,7 @@ input {
   border-radius: 8px;
 }
 
-input:focus { border-color: var(--accent); }
+input:focus, select:focus { border-color: var(--accent); }
 
 form button {
   min-height: 46px;
@@ -619,6 +619,144 @@ form + .auth-link:hover { color: var(--highlight); }
 
 .contacts-list__actions > button:hover { color: var(--text); }
 
+.transactions-page {
+  display: grid;
+  gap: 28px;
+}
+
+.transactions-page__content {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.8fr) minmax(0, 1.2fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.transaction-form-card, .transactions-list-card {
+  overflow: hidden;
+  background: rgba(25, 24, 22, 0.78);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+}
+
+.transaction-form-card { padding: 28px; }
+
+.transaction-form-card__header, .transactions-list-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.transaction-form-card h2, .transactions-list-card h2 { margin: 0; color: var(--text); }
+
+.transaction-form { margin-top: 24px; }
+
+.transaction-form__two-columns {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.transaction-form button[type="submit"] { width: 100%; }
+
+.transactions-list-card__header {
+  padding: 27px 30px;
+  border-bottom: 1px solid var(--border);
+}
+
+.transactions-list-card__header > span {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.transactions-list-card__state, .transactions-list-card__empty {
+  min-height: 180px;
+  margin: 0;
+  padding: 30px;
+  display: grid;
+  place-content: center;
+  gap: 14px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.transactions-list-card__state p { margin: 0; }
+
+.transactions-list-card__state button {
+  padding: 10px 16px;
+  color: #25150c;
+  background: var(--highlight);
+  border: 0;
+  border-radius: 8px;
+  font-weight: 800;
+}
+
+.transactions-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.transactions-list__item {
+  padding: 20px 30px;
+  display: grid;
+  grid-template-columns: minmax(170px, 1fr) auto auto;
+  align-items: center;
+  gap: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.transactions-list__item:last-child { border-bottom: 0; }
+
+.transactions-list__identity, .transactions-list__details, .transactions-list__actions {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.transactions-list__identity { min-width: 0; }
+
+.transactions-list__identity div { min-width: 0; }
+
+.transactions-list__identity strong, .transactions-list__identity small { display: block; }
+
+.transactions-list__identity strong {
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.transactions-list__identity small, .transactions-list__details > span:first-child {
+  color: var(--text-muted);
+  font-size: 0.77rem;
+}
+
+.transactions-list__details {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.transactions-list__details > strong {
+  color: var(--text);
+  font-size: 0.88rem;
+  white-space: nowrap;
+}
+
+.transactions-list__actions {
+  justify-content: flex-end;
+  gap: 13px;
+}
+
+.transactions-list__actions > button:not(.button-link) {
+  padding: 6px 0;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.transactions-list__actions > button:hover { color: var(--text); }
+
 @media (max-width: 760px) {
   .sidebar {
     position: fixed;
@@ -676,6 +814,11 @@ form + .auth-link:hover { color: var(--highlight); }
   .contacts-page__content { grid-template-columns: 1fr; }
   .contact-form-card { padding: 24px 20px; }
   .contacts-list-card__header, .contacts-list__item { padding: 22px 20px; }
+  .transactions-page__content { grid-template-columns: 1fr; }
+  .transaction-form-card { padding: 24px 20px; }
+  .transactions-list-card__header, .transactions-list__item { padding: 22px 20px; }
+  .transactions-list__item { grid-template-columns: 1fr; gap: 14px; }
+  .transactions-list__details, .transactions-list__actions { justify-content: flex-start; }
 }
 
 @media (max-width: 420px) {

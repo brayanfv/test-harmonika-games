@@ -5,6 +5,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ContactsPage } from './pages/ContactsPage';
+import { TransactionsPage } from './pages/TransactionsPage';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
         <Route element={<ProtectedLayout />}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/contacts" element={<ContactsPage />} />
+          <Route path="/transactions" element={<TransactionsPage />} />
         </Route>
       </Route>
 
