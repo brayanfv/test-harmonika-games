@@ -7,6 +7,7 @@ import {
   payTransaction,
   updateTransaction,
 } from '../api/transactions';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 import type { Contact } from '../types/contact';
 import type {
   Transaction,
@@ -21,6 +22,13 @@ type TransactionFormData = {
   amount: string;
   dueDate: string;
 };
+
+type ConfirmationAction = {
+  type: 'delete' | 'settle';
+  transaction: Transaction;
+};
+
+const transactionsPerPage = 5;
 
 const emptyTransaction: TransactionFormData = {
   contactId: '',
@@ -87,8 +95,11 @@ export function TransactionsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [formData, setFormData] = useState<TransactionFormData>(emptyTransaction);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [confirmationAction, setConfirmationAction] = useState<ConfirmationAction | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
   const [settlingId, setSettlingId] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState('');
@@ -105,6 +116,7 @@ export function TransactionsPage() {
       ]);
       setTransactions(transactionsData);
       setContacts(contactsData);
+      setCurrentPage(1);
     } catch {
       setError('Não foi possível carregar os lançamentos.');
     } finally {
@@ -115,6 +127,12 @@ export function TransactionsPage() {
   useEffect(() => {
     void loadData();
   }, []);
+
+  const totalPages = Math.max(1, Math.ceil(transactions.length / transactionsPerPage));
+  const activePage = Math.min(currentPage, totalPages);
+  const pageStart = (activePage - 1) * transactionsPerPage;
+  const visibleTransactions = transactions.slice(pageStart, pageStart + transactionsPerPage);
+  const confirmationBusy = deletingId !== null || settlingId !== null;
 
   function resetForm() {
     setFormData(emptyTransaction);
@@ -157,6 +175,7 @@ export function TransactionsPage() {
       } else {
         const createdTransaction = await createTransaction(data);
         setTransactions((currentTransactions) => [createdTransaction, ...currentTransactions]);
+        setCurrentPage(1);
         setFeedback('Lançamento criado com sucesso.');
       }
 
@@ -173,10 +192,7 @@ export function TransactionsPage() {
       return;
     }
 
-    if (!window.confirm(`Excluir o lançamento ${transaction.description}?`)) {
-      return;
-    }
-
+    setDeletingId(transaction.id);
     setError('');
     setFeedback('');
 
@@ -193,15 +209,14 @@ export function TransactionsPage() {
       setFeedback('Lançamento excluído com sucesso.');
     } catch {
       setError('Não foi possível excluir o lançamento. Tente novamente.');
+    } finally {
+      setDeletingId(null);
+      setConfirmationAction(null);
     }
   }
 
   async function handleSettlement(transaction: Transaction) {
     if (transaction.status === 'paid') {
-      return;
-    }
-
-    if (!window.confirm(`Liquidar o lançamento ${transaction.description}?`)) {
       return;
     }
 
@@ -221,6 +236,7 @@ export function TransactionsPage() {
       setError('Não foi possível liquidar o lançamento. Tente novamente.');
     } finally {
       setSettlingId(null);
+      setConfirmationAction(null);
     }
   }
 
@@ -332,7 +348,7 @@ export function TransactionsPage() {
             <p className="transactions-list-card__empty">Nenhum lançamento cadastrado até o momento.</p>
           ) : (
             <ul className="transactions-list">
-              {transactions.map((transaction) => {
+              {visibleTransactions.map((transaction) => {
                 const status = getVisualStatus(transaction, today);
                 const statusLabel = {
                   paid: 'Pago',
@@ -369,12 +385,12 @@ export function TransactionsPage() {
                           type="button"
                           className="transaction-settlement-button"
                           disabled={settlingId === transaction.id}
-                          onClick={() => void handleSettlement(transaction)}
+                          onClick={() => setConfirmationAction({ type: 'settle', transaction })}
                         >
                           {settlingId === transaction.id ? 'Liquidando...' : 'Liquidar'}
                         </button>
                         <button type="button" onClick={() => startEditing(transaction)}>Editar</button>
-                        <button type="button" className="button-link button-link--danger" onClick={() => void handleDelete(transaction)}>
+                        <button type="button" className="button-link button-link--danger" onClick={() => setConfirmationAction({ type: 'delete', transaction })}>
                           Excluir
                         </button>
                       </div>
@@ -384,8 +400,57 @@ export function TransactionsPage() {
               })}
             </ul>
           )}
+
+          {!loading && !error && transactions.length > transactionsPerPage && (
+            <nav className="list-pagination" aria-label="Paginação de lançamentos">
+              <button
+                type="button"
+                disabled={activePage === 1}
+                onClick={() => setCurrentPage(activePage - 1)}
+              >
+                Anterior
+              </button>
+              <span>Página {activePage} de {totalPages}</span>
+              <button
+                type="button"
+                disabled={activePage === totalPages}
+                onClick={() => setCurrentPage(activePage + 1)}
+              >
+                Próxima
+              </button>
+            </nav>
+          )}
         </section>
       </div>
+
+      <ConfirmationModal
+        isOpen={confirmationAction !== null}
+        title={confirmationAction?.type === 'settle' ? 'Liquidar lançamento' : 'Excluir lançamento'}
+        message={
+          confirmationAction?.type === 'settle'
+            ? `Confirmar a liquidação de ${confirmationAction.transaction.description}? O lançamento será marcado como pago.`
+            : `Tem certeza de que deseja excluir ${confirmationAction?.transaction.description ?? 'este lançamento'}? Esta ação não pode ser desfeita.`
+        }
+        confirmText={
+          confirmationAction?.type === 'settle'
+            ? settlingId !== null ? 'Liquidando...' : 'Liquidar lançamento'
+            : deletingId !== null ? 'Excluindo...' : 'Excluir lançamento'
+        }
+        variant={confirmationAction?.type === 'settle' ? 'accent' : 'danger'}
+        busy={confirmationBusy}
+        onConfirm={() => {
+          if (!confirmationAction) {
+            return;
+          }
+
+          if (confirmationAction.type === 'settle') {
+            void handleSettlement(confirmationAction.transaction);
+          } else {
+            void handleDelete(confirmationAction.transaction);
+          }
+        }}
+        onCancel={() => setConfirmationAction(null)}
+      />
     </section>
   );
 }

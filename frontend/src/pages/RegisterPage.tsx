@@ -91,7 +91,7 @@ export function RegisterPage() {
         </button>
       </form>
 
-      <button type="button" onClick={() => navigate('/login')}>
+      <button type="button" className="auth-link" onClick={() => navigate('/login')}>
         Já tenho uma conta
       </button>
     </main>
