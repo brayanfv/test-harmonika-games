@@ -2,11 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Contact;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use App\Http\Requests\StoreContactRequest;
 use App\Http\Requests\UpdateContactRequest;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ContactController extends Controller
 {
@@ -61,6 +60,4 @@ class ContactController extends Controller
 
         return response()->json(null, 204);
     }
-    
 }
-

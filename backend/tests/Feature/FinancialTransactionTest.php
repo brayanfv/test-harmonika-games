@@ -398,6 +398,86 @@ class FinancialTransactionTest extends TestCase
             ]);
     }
 
+    public function test_paid_transaction_cannot_be_updated_or_deleted(): void
+    {
+        $user = User::factory()->create();
+
+        $transaction = $user->financialTransactions()->create([
+            'type' => 'payable',
+            'description' => 'Histórico liquidado',
+            'amount' => 300.00,
+            'due_date' => '2026-09-15',
+            'status' => 'paid',
+            'paid_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->putJson("/api/transactions/{$transaction->id}", [
+                'description' => 'Tentativa de alteração',
+            ])
+            ->assertUnprocessable()
+            ->assertJson([
+                'message' => 'Paid transactions cannot be updated.',
+            ]);
+
+        $this->actingAs($user)
+            ->deleteJson("/api/transactions/{$transaction->id}")
+            ->assertUnprocessable()
+            ->assertJson([
+                'message' => 'Paid transactions cannot be deleted.',
+            ]);
+
+        $this->assertDatabaseHas('financial_transactions', [
+            'id' => $transaction->id,
+            'description' => 'Histórico liquidado',
+            'status' => 'paid',
+        ]);
+    }
+
+    public function test_only_the_first_payment_attempt_changes_the_transaction(): void
+    {
+        $user = User::factory()->create();
+        $transaction = $user->financialTransactions()->create([
+            'type' => 'receivable',
+            'description' => 'Liquidação única',
+            'amount' => 500.00,
+            'due_date' => '2026-09-15',
+        ]);
+
+        $this->actingAs($user)
+            ->postJson("/api/transactions/{$transaction->id}/pay")
+            ->assertOk();
+
+        $paidAt = $transaction->fresh()->paid_at;
+
+        $this->travel(1)->minute();
+
+        $this->actingAs($user)
+            ->postJson("/api/transactions/{$transaction->id}/pay")
+            ->assertUnprocessable();
+
+        $this->assertTrue($transaction->fresh()->paid_at->equalTo($paidAt));
+    }
+
+    public function test_transaction_amount_must_fit_decimal_column_precision(): void
+    {
+        $user = User::factory()->create();
+
+        foreach ([0, -1, 10.999, 100000000] as $amount) {
+            $this->actingAs($user)
+                ->postJson('/api/transactions', [
+                    'type' => 'payable',
+                    'description' => 'Valor inválido',
+                    'amount' => $amount,
+                    'due_date' => '2026-09-15',
+                ])
+                ->assertUnprocessable()
+                ->assertJsonValidationErrors(['amount']);
+        }
+
+        $this->assertDatabaseCount('financial_transactions', 0);
+    }
+
     public function test_transaction_can_be_created_with_a_contact(): void
     {
         $user = User::factory()->create();

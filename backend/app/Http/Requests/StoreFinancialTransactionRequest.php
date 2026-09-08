@@ -23,7 +23,7 @@ class StoreFinancialTransactionRequest extends FormRequest
             ],
             'type' => ['required', Rule::in(['payable', 'receivable'])],
             'description' => ['required', 'string', 'max:255'],
-            'amount' => ['required', 'numeric', 'gt:0'],
+            'amount' => ['required', 'numeric', 'decimal:0,2', 'gt:0', 'max:99999999.99'],
             'due_date' => ['required', 'date'],
         ];
     }

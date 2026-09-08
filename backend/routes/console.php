@@ -11,3 +11,7 @@ Artisan::command('inspire', function () {
 Schedule::command('transactions:send-reminders')
     ->everyTenMinutes()
     ->withoutOverlapping();
+
+Schedule::command('period-closings:reconcile')
+    ->everyFiveMinutes()
+    ->withoutOverlapping();

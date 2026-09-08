@@ -6,6 +6,8 @@ use App\Jobs\SendTransactionReminder;
 use App\Models\FinancialTransaction;
 use App\Models\TransactionReminder;
 use Carbon\CarbonInterface;
+use Illuminate\Bus\UniqueLock;
+use Illuminate\Contracts\Cache\Repository as Cache;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
@@ -14,6 +16,11 @@ use Throwable;
 
 class TransactionReminderScanner
 {
+    public function __construct(
+        private readonly TransactionReminderEligibility $eligibility,
+        private readonly Cache $cache,
+    ) {}
+
     public function scan(?CarbonInterface $referenceDate = null): array
     {
         $date = ($referenceDate ?? now())->toImmutable()->startOfDay();
@@ -22,21 +29,20 @@ class TransactionReminderScanner
 
         return [
             TransactionReminder::TYPE_DUE_SOON => $this->queueReminders(
-                FinancialTransaction::query()
-                    ->where('status', 'pending')
-                    ->whereDate('due_date', '>=', $date->toDateString())
-                    ->whereDate(
-                        'due_date',
-                        '<=',
-                        $date->addDays(config('reminders.due_soon_days'))->toDateString()
-                    ),
-                TransactionReminder::TYPE_DUE_SOON
+                $this->eligibility->eligibleTransactions(
+                    TransactionReminder::TYPE_DUE_SOON,
+                    $date
+                ),
+                TransactionReminder::TYPE_DUE_SOON,
+                $date
             ),
             TransactionReminder::TYPE_OVERDUE => $this->queueReminders(
-                FinancialTransaction::query()
-                    ->where('status', 'pending')
-                    ->whereDate('due_date', '<', $date->toDateString()),
-                TransactionReminder::TYPE_OVERDUE
+                $this->eligibility->eligibleTransactions(
+                    TransactionReminder::TYPE_OVERDUE,
+                    $date
+                ),
+                TransactionReminder::TYPE_OVERDUE,
+                $date
             ),
         ];
     }
@@ -55,15 +61,18 @@ class TransactionReminderScanner
             ]);
     }
 
-    private function queueReminders(Builder $query, string $type): int
-    {
+    private function queueReminders(
+        Builder $query,
+        string $type,
+        CarbonInterface $referenceDate
+    ): int {
         $queued = 0;
 
         $query->orderBy('id')->chunkById(
             config('reminders.chunk_size'),
-            function (Collection $transactions) use (&$queued, $type): void {
+            function (Collection $transactions) use (&$queued, $type, $referenceDate): void {
                 foreach ($transactions as $transaction) {
-                    if ($this->queueReminder($transaction, $type)) {
+                    if ($this->queueReminder($transaction, $type, $referenceDate)) {
                         $queued++;
                     }
                 }
@@ -73,47 +82,57 @@ class TransactionReminderScanner
         return $queued;
     }
 
-    private function queueReminder(FinancialTransaction $transaction, string $type): bool
-    {
+    private function queueReminder(
+        FinancialTransaction $transaction,
+        string $type,
+        CarbonInterface $referenceDate
+    ): bool {
         try {
             $reminder = TransactionReminder::query()->firstOrCreate(
                 [
                     'financial_transaction_id' => $transaction->id,
                     'type' => $type,
+                    'due_date' => $transaction->due_date->toDateString(),
                 ],
                 [
                     'user_id' => $transaction->user_id,
-                    'due_date' => $transaction->due_date,
                 ]
             );
-        } catch (UniqueConstraintViolationException) {
+        } catch (UniqueConstraintViolationException $exception) {
             $reminder = TransactionReminder::query()
                 ->where('financial_transaction_id', $transaction->id)
                 ->where('type', $type)
-                ->firstOrFail();
+                ->whereDate('due_date', $transaction->due_date->toDateString())
+                ->first();
+
+            if ($reminder === null) {
+                throw $exception;
+            }
         }
 
-        $claimed = TransactionReminder::query()
-            ->whereKey($reminder)
-            ->whereNull('sent_at')
-            ->whereNull('cancelled_at')
-            ->whereNull('dispatched_at')
-            ->update(['dispatched_at' => now()]);
-
-        if ($claimed === 0) {
+        if (
+            $reminder->sent_at !== null
+            || $reminder->cancelled_at !== null
+            || $reminder->dispatched_at !== null
+        ) {
             return false;
         }
 
         try {
-            SendTransactionReminder::dispatch($reminder->id)
+            $pendingDispatch = SendTransactionReminder::dispatch(
+                $reminder->id,
+                $referenceDate->toDateString()
+            )
                 ->onQueue(config('reminders.queue'));
+            $job = $pendingDispatch->getJob();
 
-            return true;
+            unset($pendingDispatch);
+
+            return $reminder->fresh()->dispatched_at !== null;
         } catch (Throwable $exception) {
-            TransactionReminder::query()
-                ->whereKey($reminder)
-                ->whereNull('sent_at')
-                ->update(['dispatched_at' => null]);
+            if (isset($job)) {
+                (new UniqueLock($this->cache))->release($job);
+            }
 
             Log::error('Could not queue transaction reminder.', [
                 'reminder_id' => $reminder->id,

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -14,6 +15,8 @@ class PeriodClosing extends Model
     public const STATUS_SENT = 'sent';
 
     public const STATUS_FAILED = 'failed';
+
+    public const PUBLIC_ERROR_MESSAGE = 'Não foi possível processar o fechamento.';
 
     protected $fillable = [
         'user_id',
@@ -47,5 +50,14 @@ class PeriodClosing extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    protected function errorMessage(): Attribute
+    {
+        return Attribute::get(
+            fn (?string $value): ?string => $value === null
+                ? null
+                : self::PUBLIC_ERROR_MESSAGE
+        );
     }
 }

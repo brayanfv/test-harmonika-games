@@ -1,30 +1,8 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import api from '../api/client';
+import { AuthContext, type RegisterData, type User } from './authContextValue';
 
-type User = {
-  id: number;
-  name: string;
-  email: string;
-};
-
-type RegisterData = {
-  name: string;
-  email: string;
-  password: string;
-  password_confirmation: string;
-};
-
-type AuthContextType = {
-  user: User | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (data: RegisterData) => Promise<void>;
-  logout: () => Promise<void>;
-};
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -64,7 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    fetchUser();
+    void Promise.resolve().then(fetchUser);
   }, []);
 
   return (
@@ -80,14 +58,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-
-  return context;
 }

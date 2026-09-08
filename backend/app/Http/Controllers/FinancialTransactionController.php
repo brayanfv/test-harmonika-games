@@ -6,6 +6,7 @@ use App\Http\Requests\StoreFinancialTransactionRequest;
 use App\Http\Requests\UpdateFinancialTransactionRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class FinancialTransactionController extends Controller
 {
@@ -33,11 +34,11 @@ class FinancialTransactionController extends Controller
     public function store(StoreFinancialTransactionRequest $request): JsonResponse
     {
         $transaction = $request->user()
-        ->financialTransactions()
-        ->create([
-            ...$request->validated(),
-            'status' => 'pending',
-        ]);
+            ->financialTransactions()
+            ->create([
+                ...$request->validated(),
+                'status' => 'pending',
+            ]);
 
         return response()->json($transaction->load('contact'), 201);
     }
@@ -56,43 +57,64 @@ class FinancialTransactionController extends Controller
         UpdateFinancialTransactionRequest $request,
         int $id
     ): JsonResponse {
-        $transaction = $request->user()
-            ->financialTransactions()
-            ->findOrFail($id);
+        return DB::transaction(function () use ($request, $id): JsonResponse {
+            $transaction = $request->user()
+                ->financialTransactions()
+                ->lockForUpdate()
+                ->findOrFail($id);
 
-        $transaction->update($request->validated());
+            if ($transaction->status === 'paid') {
+                return response()->json([
+                    'message' => 'Paid transactions cannot be updated.',
+                ], 422);
+            }
 
-        return response()->json($transaction->load('contact'));
+            $transaction->update($request->validated());
+
+            return response()->json($transaction->load('contact'));
+        });
     }
 
     public function destroy(Request $request, int $id): JsonResponse
     {
-        $transaction = $request->user()
-            ->financialTransactions()
-            ->findOrFail($id);
+        return DB::transaction(function () use ($request, $id): JsonResponse {
+            $transaction = $request->user()
+                ->financialTransactions()
+                ->lockForUpdate()
+                ->findOrFail($id);
 
-        $transaction->delete();
+            if ($transaction->status === 'paid') {
+                return response()->json([
+                    'message' => 'Paid transactions cannot be deleted.',
+                ], 422);
+            }
 
-        return response()->json(null, 204);
+            $transaction->delete();
+
+            return response()->json(null, 204);
+        });
     }
 
     public function pay(Request $request, int $id): JsonResponse
     {
-        $transaction = $request->user()
-            ->financialTransactions()
-            ->findOrFail($id);
+        return DB::transaction(function () use ($request, $id): JsonResponse {
+            $transaction = $request->user()
+                ->financialTransactions()
+                ->lockForUpdate()
+                ->findOrFail($id);
 
-        if ($transaction->status === 'paid') {
-            return response()->json([
-                'message' => 'Transaction is already paid.',
-            ], 422);
-        }
+            if ($transaction->status === 'paid') {
+                return response()->json([
+                    'message' => 'Transaction is already paid.',
+                ], 422);
+            }
 
-        $transaction->update([
-            'status' => 'paid',
-            'paid_at' => now(),
-        ]);
+            $transaction->update([
+                'status' => 'paid',
+                'paid_at' => now(),
+            ]);
 
-        return response()->json($transaction->load('contact'));
+            return response()->json($transaction->load('contact'));
+        });
     }
 }
