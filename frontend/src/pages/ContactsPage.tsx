@@ -5,7 +5,10 @@ import {
   getContacts,
   updateContact,
 } from '../api/contacts';
+import { ConfirmationModal } from '../components/ConfirmationModal';
 import type { Contact, ContactData } from '../types/contact';
+
+const contactsPerPage = 5;
 
 const emptyContact: ContactData = {
   name: '',
@@ -17,8 +20,11 @@ export function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [formData, setFormData] = useState<ContactData>(emptyContact);
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [contactToDelete, setContactToDelete] = useState<Contact | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
   const [feedback, setFeedback] = useState('');
 
@@ -28,6 +34,7 @@ export function ContactsPage() {
 
     try {
       setContacts(await getContacts());
+      setCurrentPage(1);
     } catch {
       setError('Não foi possível carregar seus contatos.');
     } finally {
@@ -38,6 +45,11 @@ export function ContactsPage() {
   useEffect(() => {
     void loadContacts();
   }, []);
+
+  const totalPages = Math.max(1, Math.ceil(contacts.length / contactsPerPage));
+  const activePage = Math.min(currentPage, totalPages);
+  const pageStart = (activePage - 1) * contactsPerPage;
+  const visibleContacts = contacts.slice(pageStart, pageStart + contactsPerPage);
 
   function resetForm() {
     setFormData(emptyContact);
@@ -74,6 +86,7 @@ export function ContactsPage() {
       } else {
         const createdContact = await createContact(data);
         setContacts((currentContacts) => [createdContact, ...currentContacts]);
+        setCurrentPage(1);
         setFeedback('Contato criado com sucesso.');
       }
 
@@ -85,27 +98,31 @@ export function ContactsPage() {
     }
   }
 
-  async function handleDelete(contact: Contact) {
-    if (!window.confirm(`Excluir o contato ${contact.name}?`)) {
+  async function handleDelete() {
+    if (!contactToDelete) {
       return;
     }
 
+    setDeleting(true);
     setError('');
     setFeedback('');
 
     try {
-      await deleteContact(contact.id);
+      await deleteContact(contactToDelete.id);
       setContacts((currentContacts) =>
-        currentContacts.filter((currentContact) => currentContact.id !== contact.id),
+        currentContacts.filter((currentContact) => currentContact.id !== contactToDelete.id),
       );
 
-      if (editingContact?.id === contact.id) {
+      if (editingContact?.id === contactToDelete.id) {
         resetForm();
       }
 
       setFeedback('Contato excluído com sucesso.');
     } catch {
       setError('Não foi possível excluir o contato. Tente novamente.');
+    } finally {
+      setDeleting(false);
+      setContactToDelete(null);
     }
   }
 
@@ -185,7 +202,7 @@ export function ContactsPage() {
             <p className="contacts-list-card__empty">Comece adicionando seu primeiro contato.</p>
           ) : (
             <ul className="contacts-list">
-              {contacts.map((contact) => (
+              {visibleContacts.map((contact) => (
                 <li key={contact.id} className="contacts-list__item">
                   <div className="contacts-list__identity">
                     <span aria-hidden="true">{contact.name.charAt(0).toUpperCase()}</span>
@@ -197,7 +214,7 @@ export function ContactsPage() {
                   </div>
                   <div className="contacts-list__actions">
                     <button type="button" onClick={() => startEditing(contact)}>Editar</button>
-                    <button type="button" className="button-link button-link--danger" onClick={() => void handleDelete(contact)}>
+                    <button type="button" className="button-link button-link--danger" onClick={() => setContactToDelete(contact)}>
                       Excluir
                     </button>
                   </div>
@@ -205,8 +222,39 @@ export function ContactsPage() {
               ))}
             </ul>
           )}
+
+          {!loading && contacts.length > contactsPerPage && (
+            <nav className="list-pagination" aria-label="Paginação de contatos">
+              <button
+                type="button"
+                disabled={activePage === 1}
+                onClick={() => setCurrentPage(activePage - 1)}
+              >
+                Anterior
+              </button>
+              <span>Página {activePage} de {totalPages}</span>
+              <button
+                type="button"
+                disabled={activePage === totalPages}
+                onClick={() => setCurrentPage(activePage + 1)}
+              >
+                Próxima
+              </button>
+            </nav>
+          )}
         </section>
       </div>
+
+      <ConfirmationModal
+        isOpen={contactToDelete !== null}
+        title="Excluir contato"
+        message={`Tem certeza de que deseja excluir ${contactToDelete?.name ?? 'este contato'}? Esta ação não pode ser desfeita.`}
+        confirmText={deleting ? 'Excluindo...' : 'Excluir contato'}
+        variant="danger"
+        busy={deleting}
+        onConfirm={() => void handleDelete()}
+        onCancel={() => setContactToDelete(null)}
+      />
     </section>
   );
 }
