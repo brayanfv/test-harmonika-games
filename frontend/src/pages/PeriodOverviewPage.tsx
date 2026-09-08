@@ -3,6 +3,10 @@ import { getPeriodClosing, requestPeriodClosing } from '../api/periodClosings';
 import { getTransactions } from '../api/transactions';
 import type { PeriodClosing } from '../types/periodClosing';
 import type { Transaction } from '../types/transaction';
+import {
+  getBusinessTodayDate,
+  getCurrentBusinessMonthPeriod,
+} from '../utils/businessDate';
 
 type Period = {
   startDate: string;
@@ -21,24 +25,6 @@ const closingStatusLabels = {
   failed: 'Falha no processamento',
 };
 
-function formatDateInput(date: Date) {
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-
-  return `${date.getFullYear()}-${month}-${day}`;
-}
-
-function getCurrentMonthPeriod(): Period {
-  const today = new Date();
-  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-  const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-
-  return {
-    startDate: formatDateInput(firstDay),
-    endDate: formatDateInput(lastDay),
-  };
-}
-
 function getAmount(amount: string) {
   const value = Number(amount);
 
@@ -56,7 +42,7 @@ function isInPeriod(date: string | null, period: Period) {
 }
 
 function getTotals(transactions: Transaction[], period: Period) {
-  const today = formatDateInput(new Date());
+  const today = getBusinessTodayDate();
 
   return transactions.reduce(
     (totals, transaction) => {
@@ -102,7 +88,7 @@ function isClosingInProgress(status: PeriodClosing['status'] | undefined) {
 }
 
 export function PeriodOverviewPage() {
-  const initialPeriod = getCurrentMonthPeriod();
+  const initialPeriod = getCurrentBusinessMonthPeriod();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [startDate, setStartDate] = useState(initialPeriod.startDate);
   const [endDate, setEndDate] = useState(initialPeriod.endDate);
@@ -132,7 +118,7 @@ export function PeriodOverviewPage() {
   }
 
   useEffect(() => {
-    void loadTransactions();
+    void Promise.resolve().then(loadTransactions);
   }, []);
 
   useEffect(() => {

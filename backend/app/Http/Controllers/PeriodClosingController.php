@@ -3,20 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StorePeriodClosingRequest;
-use App\Jobs\ProcessPeriodClosing;
 use App\Models\PeriodClosing;
-use Illuminate\Bus\UniqueLock;
-use Illuminate\Contracts\Cache\Repository as Cache;
+use App\Services\PeriodClosingDispatcher;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Throwable;
 
 class PeriodClosingController extends Controller
 {
     public function __construct(
-        private readonly Cache $cache,
+        private readonly PeriodClosingDispatcher $dispatcher,
     ) {}
 
     public function store(StorePeriodClosingRequest $request): JsonResponse
@@ -40,8 +36,8 @@ class PeriodClosingController extends Controller
             }
         }
 
-        $this->releaseStaleProcessing($periodClosing);
-        $this->dispatchIfAvailable($periodClosing, retryFailed: true);
+        $this->dispatcher->releaseStaleProcessing($periodClosing);
+        $this->dispatcher->dispatchIfAvailable($periodClosing, retryFailed: true);
         $periodClosing->refresh();
 
         return response()->json([
@@ -56,86 +52,11 @@ class PeriodClosingController extends Controller
             ->periodClosings()
             ->findOrFail($id);
 
-        $this->releaseStaleProcessing($periodClosing);
-        $this->dispatchIfAvailable($periodClosing);
+        $this->dispatcher->releaseStaleProcessing($periodClosing);
+        $this->dispatcher->dispatchIfAvailable($periodClosing);
         $periodClosing->refresh();
 
         return response()->json($periodClosing);
-    }
-
-    private function dispatchIfAvailable(
-        PeriodClosing $periodClosing,
-        bool $retryFailed = false
-    ): void {
-        $availableStatuses = [PeriodClosing::STATUS_PENDING];
-
-        if ($retryFailed) {
-            $availableStatuses[] = PeriodClosing::STATUS_FAILED;
-        }
-
-        $isAvailable = PeriodClosing::query()
-            ->whereKey($periodClosing)
-            ->whereIn('status', $availableStatuses)
-            ->whereNull('dispatched_at')
-            ->exists();
-
-        if (! $isAvailable) {
-            return;
-        }
-
-        try {
-            $pendingDispatch = ProcessPeriodClosing::dispatch($periodClosing->id)
-                ->onQueue(config('period_closings.queue'));
-            $job = $pendingDispatch->getJob();
-
-            unset($pendingDispatch);
-        } catch (Throwable $exception) {
-            if (isset($job)) {
-                (new UniqueLock($this->cache))->release($job);
-            }
-
-            PeriodClosing::query()
-                ->whereKey($periodClosing)
-                ->whereNull('sent_at')
-                ->update([
-                    'status' => PeriodClosing::STATUS_FAILED,
-                    'dispatched_at' => null,
-                    'failed_at' => now(),
-                    'error_message' => $exception->getMessage(),
-                ]);
-
-            Log::error('Could not queue period closing.', [
-                'period_closing_id' => $periodClosing->id,
-                'exception' => $exception,
-            ]);
-
-            return;
-        }
-    }
-
-    private function releaseStaleProcessing(PeriodClosing $periodClosing): void
-    {
-        PeriodClosing::query()
-            ->whereKey($periodClosing)
-            ->where('status', '!=', PeriodClosing::STATUS_SENT)
-            ->whereNotNull('dispatched_at')
-            ->where(function ($query): void {
-                $staleAt = now()->subSeconds(config('period_closings.stale_after'));
-
-                $query->where(function ($query) use ($staleAt): void {
-                    $query->where('status', PeriodClosing::STATUS_PENDING)
-                        ->where('dispatched_at', '<=', $staleAt);
-                })->orWhere(function ($query) use ($staleAt): void {
-                    $query->where('status', PeriodClosing::STATUS_PROCESSING)
-                        ->where('processing_at', '<=', $staleAt);
-                });
-            })
-            ->update([
-                'status' => PeriodClosing::STATUS_PENDING,
-                'dispatched_at' => null,
-                'processing_at' => null,
-                'delivery_token' => null,
-            ]);
     }
 
     private function responseMessage(PeriodClosing $periodClosing): string

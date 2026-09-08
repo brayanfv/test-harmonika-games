@@ -241,6 +241,44 @@ class PeriodClosingTest extends TestCase
         CarbonImmutable::setTestNow();
     }
 
+    public function test_csv_neutralizes_formula_like_text_fields(): void
+    {
+        Storage::fake('local');
+
+        $user = User::factory()->create();
+        $contact = $user->contacts()->create([
+            'name' => '+Contato',
+            'email' => '-email@example.com',
+        ]);
+
+        $user->financialTransactions()->create([
+            'contact_id' => $contact->id,
+            'type' => 'receivable',
+            'description' => '=FORMULA',
+            'amount' => 100.00,
+            'due_date' => '2026-09-10',
+        ]);
+        $user->financialTransactions()->create([
+            'type' => 'payable',
+            'description' => '@COMANDO',
+            'amount' => 50.00,
+            'due_date' => '2026-09-11',
+        ]);
+
+        $periodClosing = $user->periodClosings()->create([
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-30',
+        ]);
+
+        $filePath = app(PeriodClosingCsvGenerator::class)->generate($periodClosing);
+        $csv = Storage::disk('local')->get($filePath);
+
+        $this->assertStringContainsString("'=FORMULA", $csv);
+        $this->assertStringContainsString("'+Contato", $csv);
+        $this->assertStringContainsString("'-email@example.com", $csv);
+        $this->assertStringContainsString("'@COMANDO", $csv);
+    }
+
     public function test_failed_job_records_the_failure_and_can_be_requested_again(): void
     {
         Queue::fake();
@@ -260,7 +298,8 @@ class PeriodClosingTest extends TestCase
         $periodClosing->refresh();
 
         $this->assertSame(PeriodClosing::STATUS_FAILED, $periodClosing->status);
-        $this->assertSame('SMTP unavailable', $periodClosing->error_message);
+        $this->assertSame('SMTP unavailable', $periodClosing->getRawOriginal('error_message'));
+        $this->assertSame(PeriodClosing::PUBLIC_ERROR_MESSAGE, $periodClosing->error_message);
         $this->assertNotNull($periodClosing->failed_at);
 
         $this->actingAs($user)
@@ -275,6 +314,30 @@ class PeriodClosingTest extends TestCase
         Queue::assertPushed(ProcessPeriodClosing::class, 1);
     }
 
+    public function test_period_closing_api_does_not_expose_internal_error_details(): void
+    {
+        $user = User::factory()->create();
+        $internalError = 'SMTP connection failed at /var/www/vendor/mail.php for host mailpit';
+        $periodClosing = $user->periodClosings()->create([
+            'start_date' => '2026-09-01',
+            'end_date' => '2026-09-30',
+            'status' => PeriodClosing::STATUS_FAILED,
+            'error_message' => $internalError,
+            'failed_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->getJson("/api/period-closings/{$periodClosing->id}")
+            ->assertOk()
+            ->assertJsonPath('error_message', PeriodClosing::PUBLIC_ERROR_MESSAGE)
+            ->assertJsonMissingExact(['error_message' => $internalError]);
+
+        $this->assertSame(
+            $internalError,
+            $periodClosing->fresh()->getRawOriginal('error_message')
+        );
+    }
+
     public function test_period_closing_job_defines_retry_and_backoff(): void
     {
         $job = new ProcessPeriodClosing(1);
@@ -282,6 +345,62 @@ class PeriodClosingTest extends TestCase
         $this->assertSame(3, $job->tries);
         $this->assertSame([60, 300, 900], $job->backoff);
         $this->assertSame(900, $job->timeout);
+    }
+
+    public function test_reconciliation_requeues_pending_and_stale_closings_once(): void
+    {
+        CarbonImmutable::setTestNow('2026-09-07 12:00:00');
+        Queue::fake();
+        $this->emitJobQueuedEventsFromFake();
+
+        try {
+            $user = User::factory()->create();
+            $pendingClosing = $user->periodClosings()->create([
+                'start_date' => '2026-08-01',
+                'end_date' => '2026-08-31',
+            ]);
+            $staleClosing = $user->periodClosings()->create([
+                'start_date' => '2026-07-01',
+                'end_date' => '2026-07-31',
+                'status' => PeriodClosing::STATUS_PROCESSING,
+                'dispatched_at' => now()->subHour(),
+                'processing_at' => now()->subHour(),
+                'delivery_token' => 'stale-token',
+            ]);
+            $activeClosing = $user->periodClosings()->create([
+                'start_date' => '2026-06-01',
+                'end_date' => '2026-06-30',
+                'dispatched_at' => now(),
+            ]);
+            $user->periodClosings()->create([
+                'start_date' => '2026-05-01',
+                'end_date' => '2026-05-31',
+                'status' => PeriodClosing::STATUS_SENT,
+                'sent_at' => now(),
+            ]);
+
+            $this->artisan('period-closings:reconcile')
+                ->expectsOutput('Fechamentos reencaminhados: 2.')
+                ->assertSuccessful();
+
+            Queue::assertPushed(ProcessPeriodClosing::class, 2);
+            $this->assertNotNull($pendingClosing->fresh()->dispatched_at);
+            $this->assertSame(PeriodClosing::STATUS_PENDING, $staleClosing->fresh()->status);
+            $this->assertNotNull($staleClosing->fresh()->dispatched_at);
+            $this->assertNull($staleClosing->fresh()->delivery_token);
+            $this->assertSame(
+                $activeClosing->dispatched_at->toDateTimeString(),
+                $activeClosing->fresh()->dispatched_at->toDateTimeString()
+            );
+
+            $this->artisan('period-closings:reconcile')
+                ->expectsOutput('Fechamentos reencaminhados: 0.')
+                ->assertSuccessful();
+
+            Queue::assertPushed(ProcessPeriodClosing::class, 2);
+        } finally {
+            CarbonImmutable::setTestNow();
+        }
     }
 
     private function emitJobQueuedEventsFromFake(): void

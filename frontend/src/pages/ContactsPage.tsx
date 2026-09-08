@@ -43,7 +43,7 @@ export function ContactsPage() {
   }
 
   useEffect(() => {
-    void loadContacts();
+    void Promise.resolve().then(loadContacts);
   }, []);
 
   const totalPages = Math.max(1, Math.ceil(contacts.length / contactsPerPage));

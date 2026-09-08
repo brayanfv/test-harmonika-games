@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Jobs\ProcessPeriodClosing;
+use App\Jobs\SendTransactionReminder;
 use App\Models\PeriodClosing;
+use App\Models\TransactionReminder;
 use Illuminate\Queue\Events\JobQueued;
 use Illuminate\Queue\Events\UniqueJobSkipped;
 use Illuminate\Support\Facades\Event;
@@ -27,6 +29,25 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Event::listen(JobQueued::class, function (JobQueued $event): void {
+            if ($event->job instanceof SendTransactionReminder) {
+                try {
+                    TransactionReminder::query()
+                        ->whereKey($event->job->reminderId)
+                        ->whereNull('sent_at')
+                        ->whereNull('cancelled_at')
+                        ->update(['dispatched_at' => now()]);
+                } catch (Throwable $exception) {
+                    Log::error('Could not record queued transaction reminder.', [
+                        'reminder_id' => $event->job->reminderId,
+                        'queue_connection' => $event->connectionName,
+                        'queue' => $event->queue,
+                        'exception' => $exception,
+                    ]);
+                }
+
+                return;
+            }
+
             if (! $event->job instanceof ProcessPeriodClosing) {
                 return;
             }
@@ -52,6 +73,15 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Event::listen(UniqueJobSkipped::class, function (UniqueJobSkipped $event): void {
+            if ($event->job instanceof SendTransactionReminder) {
+                Log::warning('Transaction reminder dispatch skipped by unique lock.', [
+                    'reminder_id' => $event->job->reminderId,
+                    'unique_id' => $event->job->uniqueId(),
+                ]);
+
+                return;
+            }
+
             if (! $event->job instanceof ProcessPeriodClosing) {
                 return;
             }

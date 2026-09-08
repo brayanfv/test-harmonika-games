@@ -25,6 +25,75 @@ body {
   background: var(--background);
 }
 
+.auth-loading {
+  min-height: 100svh;
+  padding: 32px;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  color: var(--text);
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(242, 99, 34, 0.13), transparent 18rem),
+    var(--background);
+}
+
+.auth-loading__brand {
+  display: grid;
+  justify-items: center;
+}
+
+.auth-loading__mark {
+  width: 52px;
+  height: 52px;
+  margin-bottom: 14px;
+  display: grid;
+  place-items: center;
+  color: #191410;
+  background: linear-gradient(135deg, var(--highlight), var(--accent));
+  border-radius: 15px;
+  box-shadow: 0 12px 32px rgba(242, 99, 34, 0.24);
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.auth-loading__brand strong {
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+}
+
+.auth-loading__brand small,
+.auth-loading__text {
+  color: var(--text-muted);
+}
+
+.auth-loading__brand small {
+  margin-top: 3px;
+  font-size: 0.72rem;
+}
+
+.auth-loading__spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(255, 193, 77, 0.18);
+  border-top-color: var(--highlight);
+  border-radius: 50%;
+  animation: auth-loading-spin 800ms linear infinite;
+}
+
+.auth-loading__text {
+  font-size: 0.8rem;
+}
+
+@keyframes auth-loading-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-loading__spinner { animation: none; }
+}
+
 button, input, select { font: inherit; }
 button { cursor: pointer; }
 

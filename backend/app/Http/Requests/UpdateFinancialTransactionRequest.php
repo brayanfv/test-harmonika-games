@@ -27,7 +27,14 @@ class UpdateFinancialTransactionRequest extends FormRequest
                 Rule::in(['payable', 'receivable']),
             ],
             'description' => ['sometimes', 'required', 'string', 'max:255'],
-            'amount' => ['sometimes', 'required', 'numeric', 'gt:0'],
+            'amount' => [
+                'sometimes',
+                'required',
+                'numeric',
+                'decimal:0,2',
+                'gt:0',
+                'max:99999999.99',
+            ],
             'due_date' => ['sometimes', 'required', 'date'],
         ];
     }

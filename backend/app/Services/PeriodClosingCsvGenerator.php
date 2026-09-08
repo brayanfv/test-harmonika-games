@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\FinancialTransaction;
 use App\Models\PeriodClosing;
+use App\Support\CsvFormulaSanitizer;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Storage;
@@ -140,6 +141,13 @@ class PeriodClosingCsvGenerator
 
     private function writeRow($stream, array $values): void
     {
-        fputcsv($stream, $values, ';', '"', '');
+        $safeValues = array_map(
+            fn (mixed $value): mixed => is_string($value)
+                ? CsvFormulaSanitizer::sanitize($value)
+                : $value,
+            $values
+        );
+
+        fputcsv($stream, $safeValues, ';', '"', '');
     }
 }

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { getTransactions } from '../api/transactions';
-import { useAuth } from '../auth/AuthContext';
+import { useAuth } from '../auth/useAuth';
 import type { Transaction } from '../types/transaction';
+import { getBusinessTodayDate } from '../utils/businessDate';
 
 const currencyFormatter = new Intl.NumberFormat('pt-BR', {
   style: 'currency',
@@ -26,20 +27,12 @@ function formatDueDate(dueDate: string) {
   return dateFormatter.format(new Date(year, month - 1, day));
 }
 
-function getTodayDate() {
-  const today = new Date();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-
-  return `${today.getFullYear()}-${month}-${day}`;
-}
-
 function getVisualStatus(transaction: Transaction) {
   if (transaction.status === 'paid') {
     return 'paid';
   }
 
-  return transaction.due_date.slice(0, 10) < getTodayDate() ? 'overdue' : 'pending';
+  return transaction.due_date.slice(0, 10) < getBusinessTodayDate() ? 'overdue' : 'pending';
 }
 
 export function DashboardPage() {
@@ -63,7 +56,7 @@ export function DashboardPage() {
   }
 
   useEffect(() => {
-    void loadTransactions();
+    void Promise.resolve().then(loadTransactions);
   }, []);
 
   const totals = transactions.reduce(

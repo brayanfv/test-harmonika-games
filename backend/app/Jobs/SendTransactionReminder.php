@@ -4,6 +4,8 @@ namespace App\Jobs;
 
 use App\Mail\TransactionReminderMail;
 use App\Models\TransactionReminder;
+use App\Services\TransactionReminderEligibility;
+use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -27,16 +29,24 @@ class SendTransactionReminder implements ShouldBeUnique, ShouldQueue
 
     public int $uniqueFor = 900;
 
-    public function __construct(public readonly int $reminderId) {}
+    public function __construct(
+        public readonly int $reminderId,
+        public readonly string $referenceDate,
+    ) {}
 
     public function uniqueId(): string
     {
         return "transaction-reminder:{$this->reminderId}";
     }
 
-    public function handle(): void
+    public function handle(TransactionReminderEligibility $eligibility): void
     {
-        $reminder = $this->claimReminder();
+        $referenceDate = CarbonImmutable::createFromFormat(
+            '!Y-m-d',
+            $this->referenceDate,
+            config('app.timezone')
+        );
+        $reminder = $this->claimReminder($eligibility, $referenceDate);
 
         if ($reminder === null) {
             return;
@@ -84,9 +94,11 @@ class SendTransactionReminder implements ShouldBeUnique, ShouldQueue
             ]);
     }
 
-    private function claimReminder(): ?TransactionReminder
-    {
-        return DB::transaction(function (): ?TransactionReminder {
+    private function claimReminder(
+        TransactionReminderEligibility $eligibility,
+        CarbonImmutable $referenceDate
+    ): ?TransactionReminder {
+        return DB::transaction(function () use ($eligibility, $referenceDate): ?TransactionReminder {
             $reminder = TransactionReminder::query()
                 ->with(['financialTransaction.contact', 'user'])
                 ->lockForUpdate()
@@ -102,7 +114,11 @@ class SendTransactionReminder implements ShouldBeUnique, ShouldQueue
 
             if (
                 $reminder->financialTransaction === null
-                || $reminder->financialTransaction->status !== 'pending'
+                || ! $eligibility->isEligible(
+                    $reminder->financialTransaction,
+                    $reminder,
+                    $referenceDate
+                )
             ) {
                 $reminder->update([
                     'cancelled_at' => now(),

@@ -14,6 +14,7 @@ import type {
   TransactionData,
   TransactionType,
 } from '../types/transaction';
+import { getBusinessTodayDate } from '../utils/businessDate';
 
 type TransactionFormData = {
   contactId: string;
@@ -54,14 +55,6 @@ const dateTimeFormatter = new Intl.DateTimeFormat('pt-BR', {
   timeStyle: 'short',
 });
 
-function getTodayDate() {
-  const today = new Date();
-  const month = String(today.getMonth() + 1).padStart(2, '0');
-  const day = String(today.getDate()).padStart(2, '0');
-
-  return `${today.getFullYear()}-${month}-${day}`;
-}
-
 function getVisualStatus(transaction: Transaction, today: string) {
   if (transaction.status === 'paid') {
     return 'paid';
@@ -90,6 +83,16 @@ function formatPaidAt(paidAt: string) {
   return dateTimeFormatter.format(new Date(paidAt));
 }
 
+function compareTransactions(first: Transaction, second: Transaction) {
+  const dueDateComparison = second.due_date.localeCompare(first.due_date);
+
+  return dueDateComparison !== 0 ? dueDateComparison : second.id - first.id;
+}
+
+function sortTransactions(transactions: Transaction[]) {
+  return [...transactions].sort(compareTransactions);
+}
+
 export function TransactionsPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -101,31 +104,32 @@ export function TransactionsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [settlingId, setSettlingId] = useState<number | null>(null);
-  const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [operationError, setOperationError] = useState('');
   const [feedback, setFeedback] = useState('');
-  const today = getTodayDate();
+  const today = getBusinessTodayDate();
 
   async function loadData() {
     setLoading(true);
-    setError('');
+    setLoadError('');
 
     try {
       const [transactionsData, contactsData] = await Promise.all([
         getTransactions(),
         getContacts(),
       ]);
-      setTransactions(transactionsData);
+      setTransactions(sortTransactions(transactionsData));
       setContacts(contactsData);
       setCurrentPage(1);
     } catch {
-      setError('Não foi possível carregar os lançamentos.');
+      setLoadError('Não foi possível carregar os lançamentos.');
     } finally {
       setLoading(false);
     }
   }
 
   useEffect(() => {
-    void loadData();
+    void Promise.resolve().then(loadData);
   }, []);
 
   const totalPages = Math.max(1, Math.ceil(transactions.length / transactionsPerPage));
@@ -146,13 +150,14 @@ export function TransactionsPage() {
 
     setEditingTransaction(transaction);
     setFormData(getFormData(transaction));
+    setOperationError('');
     setFeedback('');
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSubmitting(true);
-    setError('');
+    setOperationError('');
     setFeedback('');
 
     const data: TransactionData = {
@@ -167,21 +172,25 @@ export function TransactionsPage() {
       if (editingTransaction) {
         const updatedTransaction = await updateTransaction(editingTransaction.id, data);
         setTransactions((currentTransactions) =>
-          currentTransactions.map((transaction) =>
-            transaction.id === updatedTransaction.id ? updatedTransaction : transaction,
+          sortTransactions(
+            currentTransactions.map((transaction) =>
+              transaction.id === updatedTransaction.id ? updatedTransaction : transaction,
+            ),
           ),
         );
         setFeedback('Lançamento atualizado com sucesso.');
       } else {
         const createdTransaction = await createTransaction(data);
-        setTransactions((currentTransactions) => [createdTransaction, ...currentTransactions]);
+        setTransactions((currentTransactions) =>
+          sortTransactions([...currentTransactions, createdTransaction]),
+        );
         setCurrentPage(1);
         setFeedback('Lançamento criado com sucesso.');
       }
 
       resetForm();
     } catch {
-      setError('Não foi possível salvar o lançamento. Verifique os dados e tente novamente.');
+      setOperationError('Não foi possível salvar o lançamento. Verifique os dados e tente novamente.');
     } finally {
       setSubmitting(false);
     }
@@ -193,7 +202,7 @@ export function TransactionsPage() {
     }
 
     setDeletingId(transaction.id);
-    setError('');
+    setOperationError('');
     setFeedback('');
 
     try {
@@ -208,7 +217,7 @@ export function TransactionsPage() {
 
       setFeedback('Lançamento excluído com sucesso.');
     } catch {
-      setError('Não foi possível excluir o lançamento. Tente novamente.');
+      setOperationError('Não foi possível excluir o lançamento. Tente novamente.');
     } finally {
       setDeletingId(null);
       setConfirmationAction(null);
@@ -221,19 +230,21 @@ export function TransactionsPage() {
     }
 
     setSettlingId(transaction.id);
-    setError('');
+    setOperationError('');
     setFeedback('');
 
     try {
       const paidTransaction = await payTransaction(transaction.id);
       setTransactions((currentTransactions) =>
-        currentTransactions.map((currentTransaction) =>
-          currentTransaction.id === paidTransaction.id ? paidTransaction : currentTransaction,
+        sortTransactions(
+          currentTransactions.map((currentTransaction) =>
+            currentTransaction.id === paidTransaction.id ? paidTransaction : currentTransaction,
+          ),
         ),
       );
       setFeedback('Lançamento liquidado com sucesso.');
     } catch {
-      setError('Não foi possível liquidar o lançamento. Tente novamente.');
+      setOperationError('Não foi possível liquidar o lançamento. Tente novamente.');
     } finally {
       setSettlingId(null);
       setConfirmationAction(null);
@@ -249,7 +260,11 @@ export function TransactionsPage() {
       </div>
 
       {feedback && <p className="contacts-feedback" role="status">{feedback}</p>}
-      {error && <p className="contacts-feedback contacts-feedback--error" role="alert">{error}</p>}
+      {operationError && (
+        <p className="contacts-feedback contacts-feedback--error" role="alert">
+          {operationError}
+        </p>
+      )}
 
       <div className="transactions-page__content">
         <section className="transaction-form-card" aria-labelledby="transaction-form-title">
@@ -339,7 +354,7 @@ export function TransactionsPage() {
 
           {loading ? (
             <div className="transactions-list-card__state" role="status">Carregando lançamentos...</div>
-          ) : error ? (
+          ) : loadError ? (
             <div className="transactions-list-card__state">
               <p>Não foi possível carregar seus lançamentos.</p>
               <button type="button" onClick={() => void loadData()}>Tentar novamente</button>
@@ -401,7 +416,7 @@ export function TransactionsPage() {
             </ul>
           )}
 
-          {!loading && !error && transactions.length > transactionsPerPage && (
+          {!loading && !loadError && transactions.length > transactionsPerPage && (
             <nav className="list-pagination" aria-label="Paginação de lançamentos">
               <button
                 type="button"
